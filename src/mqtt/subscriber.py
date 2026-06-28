@@ -1,11 +1,10 @@
 import paho.mqtt.client as mqtt
 import json
 import logging
-from datetime import datetime
-from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, ARQUIVO_DADOS, MQTT_QOS, MQTT_KEEPALIVE
+from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, MQTT_QOS, MQTT_KEEPALIVE
+from service.influxdb_service import inserir_data_dht
 
 logger = logging.getLogger(__name__)
-
 
 class Subscriber:
     def __init__(self, alert_manager):
@@ -14,24 +13,11 @@ class Subscriber:
         self.client.on_connect = self.ao_conectar
         self.client.on_message = self.ao_receber_mensagem
 
-    def salvar(self, payload):
-        try:
-            dados = []
-            try:
-                with open(ARQUIVO_DADOS, 'r') as f:
-                    dados = json.load(f)
-            except (FileNotFoundError, json.JSONDecodeError):
-                pass
-            dados.append(payload)
-            with open(ARQUIVO_DADOS, 'w') as f:
-                json.dump(dados, f, indent=4)
-        except Exception as e:
-            logger.error(f"Erro ao salvar: {e}")
-
     def ao_conectar(self, client, userdata, flags, rc):
         if rc == 0:
             logger.info("Conectado ao Broker.")
             client.subscribe(MQTT_TOPIC, qos=MQTT_QOS)
+            logger.info(f"Inscrito no topico MQTT: {MQTT_TOPIC}")
         else:
             logger.error(f"Falha na conexao: {rc}")
 
@@ -42,16 +28,21 @@ class Subscriber:
 
             try:
                 data = json.loads(payload_str)
-                if 'timestamp' not in data:
-                    data['timestamp'] = datetime.now().isoformat()
-
-                self.salvar(data)
+                inserir_data_dht(data['device'], data['temperatura'], data['umidade'])
                 self.alert_manager.processar_leitura(data)
+            except KeyError as e:
+                logger.error(f"Campo ausente no payload MQTT: {e}. Payload: {payload_str}")
             except json.JSONDecodeError:
                 logger.warning("Payload invalido (nao-JSON).")
         except Exception as e:
             logger.error(f"Erro no processamento: {e}")
 
-    def iniciar(self):
+    def iniciar_background(self):
+        logger.info(f"Conectando ao MQTT em {MQTT_BROKER}:{MQTT_PORT}...")
         self.client.connect(MQTT_BROKER, MQTT_PORT, MQTT_KEEPALIVE)
-        self.client.loop_forever()
+        self.client.loop_start()
+
+    def parar(self):
+        logger.info("Encerrando subscriber MQTT...")
+        self.client.loop_stop()
+        self.client.disconnect()
