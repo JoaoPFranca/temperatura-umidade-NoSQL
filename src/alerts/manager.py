@@ -12,7 +12,7 @@ class AlertManager:
         """Avalia limites e dispara notificacoes."""
         temp = dados.get("temperatura")
         umid = dados.get("umidade")
-        disp = dados.get("dispositivo", "Desconhecido")
+        disp = dados.get("device", dados.get("dispositivo", "Desconhecido"))
 
         if disp not in self.estado_alerta:
             self.estado_alerta[disp] = {"temperatura": "NORMAL", "umidade": "NORMAL"}
