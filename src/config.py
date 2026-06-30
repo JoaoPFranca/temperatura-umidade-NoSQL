@@ -12,7 +12,7 @@ LIMITE_UMIDADE_MAX = 60.0
 LIMITE_UMIDADE_MIN = 30.0
 INTERVALO_ENVIO = 5
 
-INFLUX_URL = os.getenv("INFLUX_URL", "http://localhost:8086")
+INFLUX_URL = os.getenv("INFLUX_URL", "http://localhost:8087")
 INFLUX_TOKEN = os.getenv("INFLUX_TOKEN", "token_influx")
 INFLUX_ORG = os.getenv("INFLUX_ORG", "trabalho-nosql-org")
 INFLUX_BUCKET = os.getenv("INFLUX_BUCKET", "trabalho-nosql")
