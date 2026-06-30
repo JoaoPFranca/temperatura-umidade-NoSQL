@@ -1,11 +1,14 @@
 import logging
 import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
-
 from alerts.manager import AlertManager
 from mqtt.subscriber import Subscriber
+from service.influxdb_service import consultar_dados
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,9 +35,14 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"status": "Monitoramento IoT Ativo", "banco": "InfluxDB"}
 
-
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
+@app.get("/api/dados/{dispositivo}")
+async def get_dados_dispositivo(dispositivo: str, horas: int = 1):
+    dados = consultar_dados(dispositivo, horas)
+    return {
+        "dispositivo": dispositivo,
+        "periodo_horas": horas,
+        "total_registros": len(dados),
+        "historico": dados
+    }
