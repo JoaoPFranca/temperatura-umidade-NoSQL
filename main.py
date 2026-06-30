@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from alerts.manager import AlertManager
 from mqtt.subscriber import Subscriber
 from pydantic import BaseModel
-from service.influxdb_service import consultar_dados, consultar_dados_intervalo, deletar_dados, atualizar_data_dht
+from service.influxdb_service import consultar_dados, consultar_dados_intervalo, deletar_dados, atualizar_data_dht, consultar_dados_agregados, consultar_dados_media_movel
 
 class AtualizacaoSensor(BaseModel):
     temperatura: float
@@ -53,6 +53,17 @@ async def get_dados_intervalo(dispositivo: str, inicio: str, fim: str):
     # Formato esperado: YYYY-MM-DDTHH:MM:SSZ
     dados = consultar_dados_intervalo(dispositivo, inicio, fim)
     return {"dispositivo": dispositivo, "total_registros": len(dados), "historico": dados}
+
+@app.get("/api/dados/{dispositivo}/resumo")
+async def get_dados_resumo(dispositivo: str, horas: int = 24, janela: str = "1h"):
+    dados = consultar_dados_agregados(dispositivo, horas, janela)
+    return {"dispositivo": dispositivo, "janela": janela, "total_registros": len(dados), "historico_agregado": dados}
+
+@app.get("/api/dados/{dispositivo}/tendencia")
+async def get_dados_tendencia(dispositivo: str, horas: int = 1, pontos: int = 5):
+    """Nova feature de TSDB: Aplica Média Móvel sobre os últimos N pontos para analisar tendências e suavizar ruídos."""
+    dados = consultar_dados_media_movel(dispositivo, horas, pontos)
+    return {"dispositivo": dispositivo, "n_pontos": pontos, "total_registros": len(dados), "tendencia": dados}
 
 @app.put("/api/dados/{dispositivo}")
 async def atualizar_leitura(dispositivo: str, dados: AtualizacaoSensor):
